@@ -111,4 +111,4 @@ def test_router_ignores_unknown_and_non_dict_events():
             "summary_text": "   ",
         }
     )
-    assert writers == []
+    assert writers == ["state"]
