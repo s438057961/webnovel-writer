@@ -501,3 +501,114 @@ def test_webnovel_init_deconstruction_wiring_keeps_confirmation_gate():
     assert "用户确认前" in text
     assert "Step 2-6 只能使用用户确认过、并已变形为本书差异化表达的模式" in text
     assert "汇总 Step 1.5 已确认的灵感来源" in text
+
+
+# ---------------------------------------------------------------------------
+# 7. A 类跨层红线：行为/契约级断言（Phase 0 守护）
+#    这些断言守护「已实现」的业务红线，全部应为绿。优先断言结构不变量
+#    （命令存在/顺序、节点 schema、变量化的真实参数），不做脆弱的文案匹配。
+# ---------------------------------------------------------------------------
+
+# A 类红线 2：placeholder-scan 必须出现在 plan 与 write 两层的关键节点。
+def test_placeholder_scan_runs_in_both_plan_and_write_skills():
+    """红线 2：plan 与 write 都必须显式调用 placeholder-scan CLI。"""
+    plan_text = _read_text(SKILLS_DIR / "webnovel-plan" / "SKILL.md")
+    write_text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    for name, text in (("webnovel-plan", plan_text), ("webnovel-write", write_text)):
+        cmds = _extract_cli_subcommands(text)
+        assert "placeholder-scan" in cmds, (
+            f"{name}: 关键节点缺少 placeholder-scan CLI 调用"
+        )
+
+
+# A 类红线 3：story-system 章级刷新必须传入真实 CHAPTER_GOAL 变量，
+# 不得把 {章纲目标} / 第N章章纲目标 这类占位文本当作 positional query。
+@pytest.mark.parametrize("skill_name", ["webnovel-plan", "webnovel-write"])
+def test_story_system_chapter_refresh_uses_real_goal_not_placeholder_query(skill_name: str):
+    """红线 3：story-system 的 query 实参是 ${CHAPTER_GOAL} 变量，且禁占位文本写在命令里。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    # 命令必须用变量化的真实目标作为 query 实参
+    assert 'story-system "${CHAPTER_GOAL}"' in text, (
+        f"{skill_name}: story-system 未使用真实 ${{CHAPTER_GOAL}} 作为 query 实参"
+    )
+    # 占位 query 绝不能作为 story-system 的 positional 实参出现
+    for placeholder in ("{章纲目标}", "第N章章纲目标"):
+        assert f'story-system "{placeholder}"' not in text, (
+            f"{skill_name}: story-system 不得把占位文本 {placeholder} 当作 query"
+        )
+    # 必须显式声明「禁止占位 query」这一约束（断言事实存在，不锁具体措辞）
+    assert "{章纲目标}" in text and "第N章章纲目标" in text, (
+        f"{skill_name}: 缺少对占位 query 的明确禁止说明"
+    )
+
+
+# A 类红线 4：story-system 章级刷新必须 --persist 且 --emit-runtime-contracts。
+@pytest.mark.parametrize("skill_name", ["webnovel-plan", "webnovel-write"])
+def test_story_system_chapter_refresh_persists_runtime_contracts(skill_name: str):
+    """红线 4：章级 story-system 刷新必须同时 --persist 与 --emit-runtime-contracts。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    cmd_start = text.find('story-system "${CHAPTER_GOAL}"')
+    assert cmd_start >= 0, f"{skill_name}: 缺少章级 story-system 调用"
+    # 取该调用所在的命令行（到下一空行/段落结束），断言两个关键开关都在
+    cmd_tail = text[cmd_start:cmd_start + 400]
+    assert "--persist" in cmd_tail, f"{skill_name}: 章级 story-system 缺少 --persist"
+    assert "--emit-runtime-contracts" in cmd_tail, (
+        f"{skill_name}: 章级 story-system 缺少 --emit-runtime-contracts"
+    )
+    assert "--chapter" in cmd_tail, f"{skill_name}: 章级 story-system 缺少 --chapter"
+
+
+# A 类红线 5：write-gate 三道闸门必须齐全且顺序为 prewrite→precommit→postcommit。
+def test_write_skill_gate_stages_ordered_prewrite_precommit_postcommit():
+    """红线 5：write-gate 三道 gate 顺序不可乱。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    prewrite = text.find("write-gate --chapter {chapter_num} --stage prewrite")
+    precommit = text.find("write-gate --chapter {chapter_num} --stage precommit")
+    postcommit = text.find("write-gate --chapter {chapter_num} --stage postcommit")
+    assert prewrite >= 0, "缺少 prewrite gate"
+    assert precommit >= 0, "缺少 precommit gate"
+    assert postcommit >= 0, "缺少 postcommit gate"
+    assert prewrite < precommit < postcommit, (
+        "write-gate 三道 gate 顺序必须为 prewrite→precommit→postcommit"
+    )
+
+
+# A 类红线 7：reviewer 原始 JSON 必须经 review-pipeline --save-metrics 落库（write 与 review 两层）。
+@pytest.mark.parametrize("skill_name", ["webnovel-write", "webnovel-review"])
+def test_review_pipeline_persists_metrics_in_review_chain(skill_name: str):
+    """红线 7：reviewer JSON 经 review-pipeline --save-metrics 落库。"""
+    text = _read_text(SKILLS_DIR / skill_name / "SKILL.md")
+    cmds = _extract_cli_subcommands(text)
+    assert "review-pipeline" in cmds, f"{skill_name}: 缺少 review-pipeline CLI 调用"
+    assert "--save-metrics" in text, f"{skill_name}: review-pipeline 未带 --save-metrics 落库"
+
+
+# A 类红线 10：postcommit 必须验证 projection 五项；失败只 projections retry。
+def test_write_skill_postcommit_verifies_five_projections_and_retry_only():
+    """红线 10：projection 五项（state/index/summary/memory/vector）验证，失败只 retry。"""
+    text = _read_text(SKILLS_DIR / "webnovel-write" / "SKILL.md")
+    assert "state/index/summary/memory/vector" in text, (
+        "缺少 projection 五项（state/index/summary/memory/vector）验证说明"
+    )
+    # 失败兜底唯一手段是 projections retry（命令以续行书写，直接断言字面调用）
+    assert "projections retry --chapter {chapter_num}" in text, (
+        "projection 失败兜底必须是 projections retry --chapter {chapter_num}"
+    )
+
+
+# A 类红线 12：plan 必须覆盖节拍表/时间线/结构化章纲节点/结构化总纲写回/状态更新。
+def test_plan_skill_covers_outline_writeback_and_state_sync_contract():
+    """红线 12：plan 的节拍表/时间线/章纲节点/总纲写回 JSON/master-outline-sync/update-state。"""
+    text = _read_text(SKILLS_DIR / "webnovel-plan" / "SKILL.md")
+    # 节拍表 / 时间线 输出物
+    assert "大纲/第{volume_id}卷-节拍表.md" in text
+    assert "大纲/第{volume_id}卷-时间线.md" in text
+    # 结构化章纲节点
+    for node in ("CBN", "CPNs", "CEN", "必须覆盖节点", "本章禁区"):
+        assert node in text, f"plan 缺少结构化章纲节点标记 {node}"
+    # 结构化总纲写回文件（不可从自由文本推断伏笔）
+    assert "大纲/第{volume_id}卷-总纲写回.json" in text
+    # 设定写回 + 状态同步命令
+    cmds = _extract_cli_subcommands(text)
+    assert "master-outline-sync" in cmds, "plan 缺少 master-outline-sync 写回命令"
+    assert "update-state" in cmds, "plan 缺少 update-state 状态更新命令"
