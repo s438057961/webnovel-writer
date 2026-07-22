@@ -33,9 +33,9 @@
   "name": "webnovel-writer",
   "version": "6.1.0",
   "description": "长篇网文创作系统（skills + agents + data chain + RAG）",
-  "author": { "name": "lingfengQAQ" },
-  "homepage": "https://github.com/lingfengQAQ/webnovel-writer",
-  "repository": "https://github.com/lingfengQAQ/webnovel-writer",
+  "author": { "name": "s438057961" },
+  "homepage": "https://github.com/s438057961/webnovel-writer",
+  "repository": "https://github.com/s438057961/webnovel-writer",
   "license": "GPL-3.0",
   "keywords": ["webnovel", "claude-code", "skills", "agents", "rag"]
 }

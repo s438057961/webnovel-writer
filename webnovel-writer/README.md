@@ -41,7 +41,7 @@
 通过 Claude Code Marketplace 安装（推荐）：
 
 ```bash
-claude plugin marketplace add lingfengQAQ/webnovel-writer --scope user
+claude plugin marketplace add s438057961/webnovel-writer --scope user
 claude plugin install webnovel-writer@webnovel-writer-marketplace --scope user
 ```
 
