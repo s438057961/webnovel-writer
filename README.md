@@ -74,7 +74,7 @@ v6.0.0 的默认主链叫 **Story System**，几个关键角色：
 通过 Claude Code Marketplace 安装：
 
 ```bash
-claude plugin marketplace add lingfengQAQ/webnovel-writer --scope user
+claude plugin marketplace add s438057961/webnovel-writer --scope user
 claude plugin install webnovel-writer@webnovel-writer-marketplace --scope user
 ```
 
