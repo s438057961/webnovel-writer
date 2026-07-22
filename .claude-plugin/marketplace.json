@@ -5,7 +5,7 @@
     "description": "Marketplace for installing the webnovel-writer plugin."
   },
   "owner": {
-    "name": "lingfengQAQ"
+    "name": "s438057961"
   },
   "plugins": [
     {
@@ -13,11 +13,11 @@
       "description": "长篇网文创作系统（skills + agents + data chain + RAG）",
       "version": "6.2.1",
       "author": {
-        "name": "lingfengQAQ"
+        "name": "s438057961"
       },
       "source": "./webnovel-writer",
       "category": "productivity",
-      "homepage": "https://github.com/lingfengQAQ/webnovel-writer"
+      "homepage": "https://github.com/s438057961/webnovel-writer"
     }
   ]
 }
